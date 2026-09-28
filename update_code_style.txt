@@ -1,0 +1,14 @@
+Parser code updates
+===================
+
+- Kept the requested workflow: read the file, clean/check its lines, then build a
+  StaticMap only when validation succeeds.
+- Replaced repeated start/end/regular hub branches with one `_parse_zone` helper.
+- Added small helpers for metadata and positive capacities so the same rules are
+  not copied into several branches.
+- Used dataclasses for dependency-free, typed map models.
+- Added type hints and PEP 257 docstrings throughout the parser-facing code.
+- Preserved `verfier_values` as an alias so existing calls do not break, while
+  exposing the correctly spelled `verifier_values` method.
+- Error messages include the original source line whenever the error belongs to a
+  particular input line.
