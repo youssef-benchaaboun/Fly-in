@@ -1,5 +1,4 @@
 import sys
-
 from parsed import Parse
 
 
@@ -20,14 +19,12 @@ def main() -> None:
     if lines is None:
         print("could not read map file")
         return
+    mapi,error=parser.parse_map(lines=lines)
+    if error:
+        print(error)
+    else:
+        print(mapi)
 
-    static_map, errors = parser.verifier_values(lines)
-    if errors:
-        for error in errors:
-            print(error)
-        return
-    if static_map is not None:
-        print(static_map.print_hubs())
 
 
 if __name__ == "__main__":
