@@ -19,12 +19,11 @@ def main() -> None:
     if lines is None:
         print("could not read map file")
         return
-    mapi,error=parser.parse_map(lines=lines)
+    mapi, error = parser.parse_map(lines=lines)
     if error:
         print(error)
     else:
         print(mapi)
-
 
 
 if __name__ == "__main__":
