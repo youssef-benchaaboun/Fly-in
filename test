@@ -1,4 +1,4 @@
-nb_drones:8
+nb_drones:10
 start_hub:hub 0 0
 end_hub: goal 10 10
 hub: hubi 8 0 [zone=restricted color=red]

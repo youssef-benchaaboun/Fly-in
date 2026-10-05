@@ -73,37 +73,46 @@ class Parse:
 
     def _parse_metadata_hub(
         self, block: str, ignore_max_drones: bool = False
-    ) -> tuple[dict[str, object] | None, str | None]:
+    ) -> tuple[dict[str, object] | None, list[str] | None]:
         """Parse optional zone metadata without changing the zone model."""
+        errors:list[str]=[]
         options: dict[str, object] = {}
         seen_keys: set[str] = set()
         if not block.startswith("[") or not block.endswith("]"):
-            return None, "metadata is not inside []"
+            return None, ["metadata is not inside []"]
 
         for token in block[1:-1].split():
             if token.count("=") != 1:
-                return None, "metadata does not respect key=value"
+                errors.append("metadata does not respect key=value")
+                continue
             key, value = token.split("=", 1)
             if key not in self._ZONE_METADATA:
-                return None, f"key:{key} does not belong to the keys"
+                errors.append(f"key:{key} does not belong to the keys")
+                continue
             if key in seen_keys:
-                return None, f"key:{key} is duplicated"
+                errors.append(f"key:{key} is duplicated")
+                continue
             seen_keys.add(key)
             if not value:
-                return None, f"key:{key} has an empty value"
+                errors.append(f"key:{key} has an empty value")
+                continue
             if key == "color":
                 options[key] = value
             elif key == "zone":
                 if value not in self._ZONE_TYPES:
-                    return None, f"key:{key} has bad value {value}"
+                    errors.append(f"key:{key} has bad value {value}")
+                    continue
                 options[key] = value
             elif ignore_max_drones:
                 continue
             else:
                 number, error = self._parse_number(value)
                 if error is not None:
-                    return None, f"key:{key} problem with number: {error}"
+                    errors.append(f"key:{key} problem with number: {error}")
+                    continue
                 options[key] = number
+        if not errors:
+            return None,errors
         return options, None
 
     def _parse_nb_drones(
@@ -125,6 +134,41 @@ class Parse:
             )
         return number, None
 
+    def _parse_conection(
+        self,
+        line: str,
+        line_number: int,
+        zones:dict[str,Zone]
+    )->tuple[str,str,int|None,str|None]:
+        errors:list[str]=[]
+        match=self._CONNECTION_PATTERN.fullmatch(line)
+        if match is None:
+            return "","",None,[f"Line {line_number}: invalid connection; expected ""'<type>: <name>-<name> [metadata]'"]
+        kind, name1, name2, block = match.groups()
+        if name1 not in zones:
+            errors.append(f"in {line_number} line {name1} is not in the zones list")
+        if name2 not in zones:
+            errors.append(f"in {line_number} line {name2} is not in the zones list")
+        if block is None:
+            return name1.strip(),name2.strip(),errors
+        if not block.startswith("[") or not block.endswith("]"):
+            errors.append(f"in {line_number} metadata is not inside []")
+        token=block[1:-1]
+        if token.count("=") != 1:
+            errors.append(f"in {line_number}metadata does not respect key=value")
+        key, value = token.split("=", 1)
+        if key not in self._CONNECTION_METADATA:
+            errors.append(f"in {line_number} key:{key} does not belong to the keys")
+        if not value:
+            errors.append(f"in {line_number} key:{key} has an empty value")
+        number, error = self._parse_number(value)
+        if error is not None:
+            errors.append(f"in {line_number} key:{key} problem with number: {error}") 
+        if errors:
+            return "","",None,errors
+        return name1.strip(),name2.strip(),number,None
+            
+        
     def _parse_zone(
         self,
         line: str,
@@ -166,7 +210,7 @@ class Parse:
                 ignore_max_drones=kind in {"start_hub", "end_hub"},
             )
             if problem is not None:
-                errors.append(f"Line {line_number}: {problem}")
+                errors.append(problem)
             elif parsed_options is not None:
                 options = parsed_options
         if errors:
@@ -210,9 +254,7 @@ class Parse:
         number_drones, drone_error = self._parse_nb_drones(clean_lines[0])
         if drone_error is not None:
             errors.append(drone_error)
-        for index, (line, line_number) in enumerate(
-            zip(clean_lines, self._line_numbers)
-        ):
+        for index, (line, line_number) in enumerate(zip(clean_lines, self._line_numbers)):
             prefix = line.split(":", 1)[0].lstrip()
             if prefix == "nb_drones":
                 if index != 0:
@@ -242,11 +284,13 @@ class Parse:
                     errors.append(f"Line {line_number}: duplicate start_hub")
                 else:
                     start_hub = zone
+                    zones[zone.name] = zone
             elif kind == "end_hub":
                 if end_hub is not None:
                     errors.append(f"Line {line_number}: duplicate end_hub")
                 else:
                     end_hub = zone
+                    zones[zone.name] = zone
             elif kind == "hub":
                 zones[zone.name] = zone
 
@@ -254,6 +298,24 @@ class Parse:
             errors.append("Input: missing start_hub")
         if end_hub is None:
             errors.append("Input: missing end_hub")
+
+        for index, (line, line_number) in enumerate(zip(clean_lines, self._line_numbers)):
+            if line in allowed_zone:
+                continue
+            name1,name2,link_capacity,er=self._parse_conection(line=line,line_number=line_number,zones=zones)
+            if link_capacity is None:
+                link_capacity=1
+            if er:
+                errors.append(er)
+                continue
+            if name1 ==name2:
+                errors.append(f"in {line_number} connection is to same zone ")
+                continue
+            if name2 in zones[name1].neighbours or name1 in zones[name2].neighbours:
+                errors.append(f"in {line_number} connection is alredy there ")
+                continue
+            zones[name1].neighbours[name2]=link_capacity
+            zones[name2].neighbours[name1]=link_capacity
         if errors:
             return None, errors
         if number_drones is None or start_hub is None or end_hub is None:
