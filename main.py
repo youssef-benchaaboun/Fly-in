@@ -24,6 +24,7 @@ def main() -> None:
     if error:
         for pr in error:
             print(pr)
+        return
     print(f"there is a way {mapi.apply_bfs()}")
 
 

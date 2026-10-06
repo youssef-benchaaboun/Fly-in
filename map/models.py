@@ -49,12 +49,12 @@ class StaticMap(BaseModel):
             for path in list_path:
                 for nxt in self.hubs[path[-1]].neighbours:
                     if self.hubs[nxt].visited==False and self.hubs[nxt].zone_type!="blocked":
-                        self.hubs[nxt].visited==True
                         new_path=path.copy()
                         new_path.append(nxt)
                         if nxt == self.end_hub.name:
                             solutions.append(new_path)
                             continue
+                        self.hubs[nxt].visited=True
                         copy_list_path.append(new_path)
             list_path=copy_list_path
         return solutions

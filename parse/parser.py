@@ -218,6 +218,8 @@ class Parse:
             errors.append(f"Line {line_number}: duplicate zone name '{name}'")
 
         coordinate: tuple[int, int] = (int(x_text), int(y_text))
+        if coordinate in seen_coordinates:
+            errors.append(f"Line {line_number}: duplicate zone coordinate '{name}'")        
 
         options: dict[str, object] = {}
         if block is not None:
