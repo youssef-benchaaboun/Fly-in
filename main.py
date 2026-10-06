@@ -1,5 +1,6 @@
 import sys
 from parse import Parse
+from map import StaticMap
 
 
 def main() -> None:
@@ -23,8 +24,7 @@ def main() -> None:
     if error:
         for pr in error:
             print(pr)
-    #apply algorithms .... to be continue
-
+    print(f"there is a way {mapi.apply_bfs()}")
 
 
 if __name__ == "__main__":

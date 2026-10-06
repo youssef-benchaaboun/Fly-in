@@ -12,6 +12,7 @@ class Zone(BaseModel):
     zone_type: str
     max_drones: int
     neighbours: dict[str, int]
+    visited:bool=False
 
     def __str__(self) -> str:
         """Return a readable summary of the zone."""
@@ -39,3 +40,21 @@ class StaticMap(BaseModel):
             f"end: {self.end_hub.name}\n"
             f"hubs: {names}"
         )
+    def apply_bfs(self)->list[list[str]]| None:
+        list_path:list[list[str]]=[[self.start_hub.name]]
+        solutions:list[list[str]]=[]
+        self.start_hub.visited=True
+        while(list_path):
+            copy_list_path=[]
+            for path in list_path:
+                for nxt in self.hubs[path[-1]].neighbours:
+                    if self.hubs[nxt].visited==False and self.hubs[nxt].zone_type!="blocked":
+                        self.hubs[nxt].visited==True
+                        new_path=path.copy()
+                        new_path.append(nxt)
+                        if nxt == self.end_hub.name:
+                            solutions.append(new_path)
+                            continue
+                        copy_list_path.append(new_path)
+            list_path=copy_list_path
+        return solutions
