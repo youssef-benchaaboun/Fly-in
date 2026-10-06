@@ -145,13 +145,11 @@ class Parse:
         if match is None:
             return "","",None,[f"Line {line_number}: invalid connection; expected ""'<type>: <name>-<name> [metadata]'"]
         name1, name2, block = match.groups()
-        print(name1,name2,block,"hhh\n")
         if name1.strip() not in zones:
             errors.append(f"in {line_number} line {name1} is not in the zones list")
         if name2.strip() not in zones:
             errors.append(f"in {line_number} line {name2} is not in the zones list")
         if block is None:
-            print("ppppppppp\n")
             return name1.strip(),name2.strip(),None,errors
         if not block.startswith("[") or not block.endswith("]"):
             errors.append(f"in {line_number} metadata is not inside []")
@@ -169,7 +167,6 @@ class Parse:
         if errors:
             print(errors,'\n')
             return "","",None,errors
-        print(name1,name2,number,"kkkkk\n")
         return name1.strip(),name2.strip(),number,None
             
         
