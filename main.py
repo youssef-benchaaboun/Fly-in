@@ -1,5 +1,5 @@
 import sys
-from parsed import Parse
+from parse import Parse
 
 
 def main() -> None:
@@ -21,9 +21,10 @@ def main() -> None:
         return
     mapi, error = parser.parse_map(lines=lines)
     if error:
-        print(error)
-    else:
-        print(mapi)
+        for pr in error:
+            print(pr)
+    #apply algorithms .... to be continue
+
 
 
 if __name__ == "__main__":

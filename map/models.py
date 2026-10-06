@@ -12,10 +12,14 @@ class Zone(BaseModel):
     zone_type: str
     max_drones: int
     neighbours: dict[str, int]
-    def __str__(self):
-        return (f"{self.name} color:{self.color},zone_type: {self.zone_type}\n"
-                f"next:{self.self.neighbours}\n"
-                f"max_drones : {self.self.max_drones}\n")
+
+    def __str__(self) -> str:
+        """Return a readable summary of the zone."""
+        return (
+            f"{self.name} color: {self.color}, zone_type: {self.zone_type}\n"
+            f"next: {self.neighbours}\n"
+            f"max_drones: {self.max_drones}\n"
+        )
 
 
 class StaticMap(BaseModel):
@@ -28,7 +32,7 @@ class StaticMap(BaseModel):
 
     def __str__(self) -> str:
         """Return a readable summary of the parsed map."""
-        names = ", ".join(str(zone) for zone in self.hubs)
+        names = ", ".join(self.hubs)
         return (
             f"drones: {self.nb_drones}\n"
             f"start: {self.start_hub.name}\n"
