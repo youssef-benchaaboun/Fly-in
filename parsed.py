@@ -144,13 +144,15 @@ class Parse:
         match=self._CONNECTION_PATTERN.fullmatch(line)
         if match is None:
             return "","",None,[f"Line {line_number}: invalid connection; expected ""'<type>: <name>-<name> [metadata]'"]
-        kind, name1, name2, block = match.groups()
-        if name1 not in zones:
+        name1, name2, block = match.groups()
+        print(name1,name2,block,"hhh\n")
+        if name1.strip() not in zones:
             errors.append(f"in {line_number} line {name1} is not in the zones list")
-        if name2 not in zones:
+        if name2.strip() not in zones:
             errors.append(f"in {line_number} line {name2} is not in the zones list")
         if block is None:
-            return name1.strip(),name2.strip(),errors
+            print("ppppppppp\n")
+            return name1.strip(),name2.strip(),None,errors
         if not block.startswith("[") or not block.endswith("]"):
             errors.append(f"in {line_number} metadata is not inside []")
         token=block[1:-1]
@@ -165,7 +167,9 @@ class Parse:
         if error is not None:
             errors.append(f"in {line_number} key:{key} problem with number: {error}") 
         if errors:
+            print(errors,'\n')
             return "","",None,errors
+        print(name1,name2,number,"kkkkk\n")
         return name1.strip(),name2.strip(),number,None
             
         
@@ -300,7 +304,9 @@ class Parse:
             errors.append("Input: missing end_hub")
 
         for index, (line, line_number) in enumerate(zip(clean_lines, self._line_numbers)):
-            if line in allowed_zone:
+            prefix = line.split(":", 1)[0].lstrip()
+            if prefix !="connection":
+                print(line_number,"been skiped")
                 continue
             name1,name2,link_capacity,er=self._parse_conection(line=line,line_number=line_number,zones=zones)
             if link_capacity is None:
