@@ -25,7 +25,10 @@ def main() -> None:
         for pr in error:
             print(pr)
         return
-    print(f"there is a way {mapi.apply_bfs()}")
+    if mapi:
+        print(f"there is a way {mapi.apply_dfs_recursion()}")
+            
+        
 
 
 if __name__ == "__main__":

@@ -1,6 +1,8 @@
 """Data models for a parsed Fly-in map."""
 
 from pydantic import BaseModel
+from collections import deque
+
 
 
 class Zone(BaseModel):
@@ -40,21 +42,52 @@ class StaticMap(BaseModel):
             f"end: {self.end_hub.name}\n"
             f"hubs: {names}"
         )
-    def apply_bfs(self)->list[list[str]]| None:
-        list_path:list[list[str]]=[[self.start_hub.name]]
+    def apply_bfs(self)->list[list[str]]:
+        queue_path=deque([[self.start_hub.name]])
         solutions:list[list[str]]=[]
         self.start_hub.visited=True
-        while(list_path):
-            copy_list_path=[]
-            for path in list_path:
-                for nxt in self.hubs[path[-1]].neighbours:
-                    if self.hubs[nxt].visited==False and self.hubs[nxt].zone_type!="blocked":
-                        new_path=path.copy()
-                        new_path.append(nxt)
-                        if nxt == self.end_hub.name:
-                            solutions.append(new_path)
-                            continue
-                        self.hubs[nxt].visited=True
-                        copy_list_path.append(new_path)
-            list_path=copy_list_path
+        while(queue_path):
+            path=queue_path.popleft()
+            curent=path[-1]
+            for nxt in self.hubs[curent].neighbours:
+                if self.hubs[nxt].visited==False and self.hubs[nxt].zone_type!="blocked":
+                    new_path=path+[nxt]
+                    if nxt == self.end_hub.name:
+                        solutions.append(new_path)
+                        continue
+                    self.hubs[nxt].visited=True
+                    queue_path.append(new_path)
+        return solutions
+
+    def apply_dfs_stack(self)->list[list[str]]:
+        stack_path=[[self.start_hub.name]]
+        solutions:list[list[str]]=[]
+        self.start_hub.visited=True
+        while(stack_path):
+            path=stack_path.pop(-1)
+            curent=path[-1]
+            for nxt in self.hubs[curent].neighbours:
+                if self.hubs[nxt].visited==False and self.hubs[nxt].zone_type!="blocked":
+                    new_path=path+[nxt]
+                    if nxt == self.end_hub.name:
+                        solutions.append(new_path)
+                        continue
+                    self.hubs[nxt].visited=True
+                    stack_path.append(new_path)
+        return solutions
+
+    def apply_dfs_recursion(self,path:list[str]|None=None)->list[list[str]]:
+        if path is None:
+            path=[self.start_hub.name]
+        solutions:list[list[str]]=[]
+        self.start_hub.visited=True
+        curent=path[-1]
+        for nxt in self.hubs[curent].neighbours:
+            if self.hubs[nxt].visited==False and self.hubs[nxt].zone_type!="blocked":
+                new_path=path+[nxt]
+                if nxt == self.end_hub.name:
+                    solutions.append(new_path)
+                    continue
+                self.hubs[nxt].visited=True
+                solutions.extend(self.apply_dfs_recursion(new_path))
         return solutions
