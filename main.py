@@ -1,6 +1,6 @@
 import sys
 from parse import Parse
-from map import StaticMap
+from models import Network
 
 
 def main() -> None:
@@ -20,13 +20,13 @@ def main() -> None:
     if lines is None:
         print("could not read map file")
         return
-    mapi, error = parser.parse_map(lines=lines)
-    if error:
-        for pr in error:
-            print(pr)
+    errors = parser.parse_map(lines=lines)
+    if errors:
+        for error in errors:
+            print(error)
         return
-    if mapi:
-        print(f"there is a way {mapi.apply_dfs_recursion()}")
+    network=parser.network
+    #later apply algorithmes
             
         
 
