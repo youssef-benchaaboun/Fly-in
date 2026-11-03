@@ -51,7 +51,10 @@ class Parse:
             if prefix not in allowed_prefix:
                 errors.append(f"Line {number}: unknown or malformed prefix")
                 continue
-            clean_lines.append(line.rstrip())
+            if("#" in line):
+                clean_lines.append(line.split("#")[0].rstrip())
+            else:
+                clean_lines.append(line.rstrip())
             self._line_numbers.append(number)
 
         if not clean_lines and not errors:
@@ -74,7 +77,7 @@ class Parse:
         self.network.nb_drones=number
         return ""
 
-    def _parse_metadata_hub(self, block: str) -> tuple[dict[str, str], list[str]]:
+    def _parse_metadata_hub(self, block: str,ignore:bool) -> tuple[dict[str, str], list[str]]:
         errors: list[str] = []
         options: dict[str, str] = {}
         seen_keys: set[str] = set()
@@ -105,7 +108,7 @@ class Parse:
                     errors.append(f"key:{key} has bad value {value}")
                     continue
                 options[key] = value
-            else:
+            elif ignore==False:
                 number, error = self._parse_number(value)
                 if error !="" or number==0:
                     errors.append(f"key:{key} problem with number: {error}")
@@ -138,12 +141,17 @@ class Parse:
 
         options: dict[str, str] = {}
         if block:
-            options, problem = self._parse_metadata_hub(block)
+            ignore=(kind=="start_hub" or kind=="end_hub")
+            options, problem = self._parse_metadata_hub(block,ignore=ignore)
             if problem !=[]:
                 errors.extend(f"Line {line_number}: {message}" for message in problem)
 
         if errors:
             return errors
+        if kind=="start_hub" and self.network.start_hub is not None:
+            return[f"Line {line_number}:duplicated star hub"]
+        if kind=="end_hub" and self.network.end_hub is not None:
+            return [f"Line {line_number}:duplicated end hub"]
         
         max_drones = int(options.get("max_drones", "1"))
         zone_type = options.get("zone", "normal")
@@ -232,27 +240,20 @@ class Parse:
                         errors.append(
                             f"Line {line_number} nb_drones declaration")
                     continue
-                if prefix not in allowed_zone:
+                if prefix =="connection":
+                    errors_connection = self._parse_conection(line=line,line_number=line_number)
+                    if errors_connection:
+                        errors.extend(errors_connection)
                     continue
                 zone_errors = self._parse_zone(line=line,line_number=line_number)
                 if zone_errors is not None:
                     errors.extend(zone_errors)
-                    continue
 
             if self.network.start_hub is None:
                 errors.append("Input: missing start_hub")
             if self.network.end_hub is None:
                 errors.append("Input: missing end_hub")
     
-            for line, line_number in zip(clean_lines, self._line_numbers):
-                prefix = line.split(":", 1)[0].strip()
-                if prefix != "connection":
-                    continue
-
-                errors_connection = self._parse_conection(line=line,line_number=line_number)
-                if errors_connection:
-                    errors.extend(errors_connection)
-                    continue
             if errors:
                 return errors
             return[]

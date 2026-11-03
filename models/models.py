@@ -44,8 +44,10 @@ class Network(BaseModel):
     def add_zone(self,zone:Zone,kind:str)->None:
         if kind=="start_hub":
             self.start_hub=zone.name
+            zone.max_drones=self.nb_drones+1
         elif kind=="end_hub":
             self.end_hub=zone.name
+            zone.max_drones=self.nb_drones+1
         self.zones[zone.name]=zone
         self.adjacencies[zone.name]=set()
 

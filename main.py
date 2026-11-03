@@ -24,7 +24,8 @@ def main() -> None:
     if errors:
         for error in errors:
             print(error)
-        return
+
+    print("heelo")#hgh (ljkhlkj)
     #later apply algorithmes
             
         
