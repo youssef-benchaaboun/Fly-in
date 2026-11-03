@@ -25,7 +25,7 @@ def main() -> None:
         for error in errors:
             print(error)
         return
-    network=parser.network
+    network:Network=parser.network
     #later apply algorithmes
             
         
