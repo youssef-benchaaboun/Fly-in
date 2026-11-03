@@ -5,13 +5,13 @@ from models import Network, Zone
 class Parse:
 
     _ZONE_PATTERN = re.compile(
-        r"^(start_hub|end_hub|hub):\s*(\S+)\s+([+-]?\d+)\s*"
+        r"^(start_hub|end_hub|hub)\s*:\s*(\S+)\s+([+-]?\d+)\s*"
         r"([+-]?\d+)(?:\s+(\[.*\]))?$"
     )
     _CONNECTION_PATTERN = re.compile(
         r"^connection:\s+([^\s-]+)-([^\s-]+)(?:\s+(\[.*\]))?$"
     )
-    _DRONES_PATTERN = re.compile(r"^nb_drones:\s*(\d+)\s*$")
+    _DRONES_PATTERN = re.compile(r"^nb_drones\s*:\s*(\d+)\s*$")
     _ZONE_TYPES = {"normal", "blocked", "restricted", "priority"}
     _ZONE_METADATA = {"zone", "color", "max_drones"}
     _CONNECTION_METADATA = {"max_link_capacity"}
@@ -23,13 +23,13 @@ class Parse:
         self.network=Network()
 
     @staticmethod
-    def _parse_number(value: str) -> tuple[int | None, str | None]:
+    def _parse_number(value: str) -> tuple[int, str]:
         if re.fullmatch(r"[0-9]+", value) is None:
-            return None, "the value must contain only decimal digits"
+            return 0, "the value must contain only decimal digits"
         number = int(value)
         if number <= 0:
-            return None, "the number must be positive"
-        return number, None
+            return 0, "the number must be positive"
+        return number,""
 
     
     def read_file(self, file_name: str) -> tuple[list[str] | None, str | None]:
@@ -45,13 +45,13 @@ class Parse:
         errors: list[str] = []
         allowed_prefix: set[str] = {"start_hub","end_hub","hub","connection","nb_drones",}
         for number, line in enumerate(lines, start=1):
-            if line.lstrip().startswith("#") or not line.lstrip():
+            if line.strip().startswith("#") or not line.strip():
                 continue
-            prefix = line.strip().split(":", 1)[0]
+            prefix = line.strip().split(":", 1)[0].strip()
             if prefix not in allowed_prefix:
                 errors.append(f"Line {number}: unknown or malformed prefix")
                 continue
-            clean_lines.append(line.strip())
+            clean_lines.append(line.rstrip())
             self._line_numbers.append(number)
 
         if not clean_lines and not errors:
@@ -60,7 +60,7 @@ class Parse:
         return clean_lines, errors
 
     def _parse_nb_drones(self, first_line: str) -> str:
-        clean_line = first_line.lstrip()
+        clean_line = first_line.strip()
         match = self._DRONES_PATTERN.fullmatch(clean_line)
         if match is None:
             message = (
@@ -74,14 +74,14 @@ class Parse:
         self.network.nb_drones=number
         return ""
 
-    def _parse_metadata_hub(self, block: str) -> tuple[dict[str, str] | None, list[str] | None]:
+    def _parse_metadata_hub(self, block: str) -> tuple[dict[str, str], list[str]]:
         errors: list[str] = []
         options: dict[str, str] = {}
         seen_keys: set[str] = set()
         if not block.startswith("[") or not block.endswith("]"):
-            return None, ["metadata is not inside []"]
+            return {}, ["metadata is not inside []"]
         if not block[1:-1].strip():
-            return None, ["metadata block is empty"]
+            return {}, ["metadata block is empty"]
 
         for token in block[1:-1].split():
             if token.count("=") != 1:
@@ -107,13 +107,13 @@ class Parse:
                 options[key] = value
             else:
                 number, error = self._parse_number(value)
-                if error is not None:
+                if error !="" or number==0:
                     errors.append(f"key:{key} problem with number: {error}")
                     continue
                 options[key] = str(number)
         if errors:
-            return None, errors
-        return options, None
+            return {}, errors
+        return options, []
     
     def _parse_zone(self,line: str,line_number: int) -> list[str]:
         match = self._ZONE_PATTERN.fullmatch(line)
@@ -139,7 +139,7 @@ class Parse:
         options: dict[str, str] = {}
         if block:
             options, problem = self._parse_metadata_hub(block)
-            if problem is not None:
+            if problem !=[]:
                 errors.extend(f"Line {line_number}: {message}" for message in problem)
 
         if errors:
@@ -207,7 +207,7 @@ class Parse:
             )
             return errors
         number, error = self._parse_number(value)
-        if error is not None or number is None:
+        if error !="" or number ==0:
             errors.append(f"Line {line_number}: key '{key}' has invalid capacity: "f"{error}")
         if errors:
             return errors
@@ -222,17 +222,15 @@ class Parse:
             if not clean_lines:
                 return errors
             drone_error = self._parse_nb_drones(clean_lines[0])
-            if drone_error is not None:
+            if drone_error != "":
                 errors.append(drone_error)
             numbered_lines = zip(clean_lines, self._line_numbers)
             for index, (line, line_number) in enumerate(numbered_lines):
-                prefix = line.split(":", 1)[0].lstrip()
+                prefix = line.split(":", 1)[0].strip()
                 if prefix == "nb_drones":
                     if index != 0:
                         errors.append(
-                            f"Line {line_number}: unexpected duplicate "
-                            "nb_drones declaration"
-                        )
+                            f"Line {line_number} nb_drones declaration")
                     continue
                 if prefix not in allowed_zone:
                     continue
@@ -247,7 +245,7 @@ class Parse:
                 errors.append("Input: missing end_hub")
     
             for line, line_number in zip(clean_lines, self._line_numbers):
-                prefix = line.split(":", 1)[0].lstrip()
+                prefix = line.split(":", 1)[0].strip()
                 if prefix != "connection":
                     continue
 

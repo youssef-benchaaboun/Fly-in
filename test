@@ -1,6 +1,8 @@
-end_hub: goal 0 8 [color=yellow]
+nb_drones   :  5
+end_hub  : goal 0 8 [color=yellow]
+start_hub   :  hub 0 -8 [color=yellow]   
 hub: roof1 3 4 [zone=restricted color=red]
-hub: roof2 6 2 okjhgne=normal color=blue]
+hub: roof2 6 2 [zone=normal color=blue]
 hub: corridorA 4 3 [zone=priority color=green max_drones=2]
 hub: tunnelB 7 4 [zone=normal color=red]
 
@@ -9,8 +11,6 @@ hub: tunnelB 7 4 [zone=normal color=red]
 
 connection: hub-goal
 connection: hub-roof2 
-connection: hub-roof2
 connection: roof1-goal
-connection: roof1-roof1
 connection: corridorA-tunnelB
 connection: tunnelB-goal

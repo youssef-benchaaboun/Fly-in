@@ -33,7 +33,7 @@ class Network(BaseModel):
     end_hub: str|None=None
     zones: dict[str, Zone]={}
     adjacencies:dict[str,set[str]]={}
-    links_capacities:dict[tuple[str,str],int]={}
+    links_capacities:dict[tuple[str,...],int]={}
 
     def add_link(self, zone1: str, zone2: str, capacity: int) -> None:
         self.adjacencies[zone1].add(zone2)
