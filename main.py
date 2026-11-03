@@ -24,9 +24,9 @@ def main() -> None:
     if errors:
         for error in errors:
             print(error)
+        return
 
-    print("heelo")#hgh (ljkhlkj)
-    #later apply algorithmes
+    # Pathfinding and simulation output will be invoked here once implemented.
             
         
 

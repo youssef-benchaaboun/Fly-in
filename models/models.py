@@ -1,23 +1,20 @@
-"""Data models for a parsed Fly-in map."""
-
-from pydantic import BaseModel
-
-
-
-class Zone(BaseModel):
-    """Represent a zone and its neighbouring zones."""
+from dataclasses import dataclass, field
+#hhgit@github.com:youssef-benchaaboun/Fly-in.git
+@dataclass
+class Zone:
 
     coordinate: tuple[int, int]
     name: str
     color: str | None
     zone_type: str
-    max_drones: int
+    max_drones: int | None
 
-    def get_zone_capacity(self)->int:
+    def get_zone_capacity(self) -> int | None:
         return self.max_drones
 
-    def update_zone_capacity(self,amount:int)->None:
-        self.max_drones = self.max_drones - amount
+    def update_zone_capacity(self, amount: int) -> None:
+        if self.max_drones is not None:
+            self.max_drones -= amount
 
     def get_zone_wieght(self)->int:
         if self.zone_type=="restricted":
@@ -25,15 +22,15 @@ class Zone(BaseModel):
         return 1
 
 
-class Network(BaseModel):
-    """Represent the static input map and its drone count."""
+@dataclass
+class Network:
 
-    nb_drones: int=0
-    start_hub: str|None=None
-    end_hub: str|None=None
-    zones: dict[str, Zone]={}
-    adjacencies:dict[str,set[str]]={}
-    links_capacities:dict[tuple[str,...],int]={}
+    nb_drones: int = 0
+    start_hub: str | None = None
+    end_hub: str | None = None
+    zones: dict[str, Zone] = field(default_factory=dict)
+    adjacencies: dict[str, set[str]] = field(default_factory=dict)
+    links_capacities: dict[tuple[str, ...], int] = field(default_factory=dict)
 
     def add_link(self, zone1: str, zone2: str, capacity: int) -> None:
         self.adjacencies[zone1].add(zone2)
@@ -44,10 +41,10 @@ class Network(BaseModel):
     def add_zone(self,zone:Zone,kind:str)->None:
         if kind=="start_hub":
             self.start_hub=zone.name
-            zone.max_drones=self.nb_drones+1
+            zone.max_drones = None
         elif kind=="end_hub":
             self.end_hub=zone.name
-            zone.max_drones=self.nb_drones+1
+            zone.max_drones = None
         self.zones[zone.name]=zone
         self.adjacencies[zone.name]=set()
 

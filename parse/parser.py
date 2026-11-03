@@ -130,14 +130,8 @@ class Parse:
             )
         if name in self.seen_names:
             errors.append(f"Line {line_number}: duplicate zone name '{name}'")
-        else:
-            self.seen_names.append(name)
 
         coordinate: tuple[int, int] = (int(x_text), int(y_text))
-        if coordinate in self.seen_coordinates:
-            errors.append(f"Line {line_number}: duplicate zone coordinate '{name}'")  
-        else:
-            self.seen_coordinates.append(coordinate)      
 
         options: dict[str, str] = {}
         if block:
@@ -146,12 +140,16 @@ class Parse:
             if problem !=[]:
                 errors.extend(f"Line {line_number}: {message}" for message in problem)
 
+        if kind=="start_hub" and self.network.start_hub is not None:
+            errors.append(f"Line {line_number}: duplicate start_hub")
+        if kind=="end_hub" and self.network.end_hub is not None:
+            errors.append(f"Line {line_number}: duplicate end_hub")
+
         if errors:
             return errors
-        if kind=="start_hub" and self.network.start_hub is not None:
-            return[f"Line {line_number}:duplicated star hub"]
-        if kind=="end_hub" and self.network.end_hub is not None:
-            return [f"Line {line_number}:duplicated end hub"]
+
+        self.seen_names.append(name)
+        self.seen_coordinates.append(coordinate)
         
         max_drones = int(options.get("max_drones", "1"))
         zone_type = options.get("zone", "normal")
@@ -224,7 +222,6 @@ class Parse:
 
     def parse_map(self, lines: list[str]) ->list[str]:
             errors: list[str] = []
-            allowed_zone: set[str] = {"start_hub", "end_hub", "hub"}
             clean_lines, problems = self.valid_lines(lines)
             errors.extend(problems)
             if not clean_lines:
@@ -238,7 +235,9 @@ class Parse:
                 if prefix == "nb_drones":
                     if index != 0:
                         errors.append(
-                            f"Line {line_number} nb_drones declaration")
+                            f"Line {line_number}: duplicate or misplaced "
+                            "nb_drones declaration"
+                        )
                     continue
                 if prefix =="connection":
                     errors_connection = self._parse_conection(line=line,line_number=line_number)
