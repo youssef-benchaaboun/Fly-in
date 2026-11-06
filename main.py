@@ -1,6 +1,7 @@
 import sys
 from parse import Parse
 from models import Network
+from Algorithms import Alogrithm
 
 
 def main() -> None:
@@ -25,8 +26,12 @@ def main() -> None:
         for error in errors:
             print(error)
         return
-
-    # Pathfinding and simulation output will be invoked here once implemented.
+    algo=Alogrithm(parser.network)
+    decompostion=algo.max_netework_flow_decomapstion()
+    paths,flows,drones=algo.min_arrive_time(decompostion)
+    print(paths)
+    print(flows)
+    print(drones)
             
         
 

@@ -8,8 +8,12 @@ class Zone:
     color: str | None
     zone_type: str
     max_drones: int | None
+    parent:str|None=None
+    distance:int=0
 
-    def get_zone_capacity(self) -> int | None:
+    def get_zone_capacity(self) -> int:
+        if self.max_drones is None:
+            return 1
         return self.max_drones
 
     def update_zone_capacity(self, amount: int) -> None:
@@ -55,7 +59,14 @@ class Network:
     def update_link_capacity(self,zone1:str,zone2:str,amount:int)->None:
         order_tuple=tuple(sorted([zone1,zone2]))
         self.links_capacities[order_tuple]=self.links_capacities[order_tuple] -amount
-
+        
+    def intialize(self)->None:
+        for zone in self.zones.values():
+            zone.parent=None
+            if zone.name==self.start_hub:
+                zone.distance=0
+            else:
+                zone.distance= 2*len(self.zones) + 1
 
 
 

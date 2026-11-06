@@ -9,7 +9,7 @@ class Parse:
         r"([+-]?\d+)(?:\s+(\[.*\]))?$"
     )
     _CONNECTION_PATTERN = re.compile(
-        r"^connection:\s+([^\s-]+)-([^\s-]+)(?:\s+(\[.*\]))?$"
+        r"^connection:\s*+([^\s-]+)-([^\s-]+)(?:\s+(\[.*\]))?$"
     )
     _DRONES_PATTERN = re.compile(r"^nb_drones\s*:\s*(\d+)\s*$")
     _ZONE_TYPES = {"normal", "blocked", "restricted", "priority"}
