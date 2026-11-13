@@ -64,7 +64,7 @@ class Alogrithm:
 
     def get_path_wight(self,path:list[str])->int:
         wight=0
-        for zone in path:
+        for zone in path[1:]:
             wight += self.zones[zone].get_zone_wieght()
         return wight
     def get_path_flow(self,path:list[str])->int:
@@ -84,7 +84,7 @@ class Alogrithm:
             self.network.update_link_capacity(path[i],path[i+1],flow)
             self.zones[path[i]].update_zone_capacity(amount=flow)
 
-    def max_netework_flow_decomapstion(self)->list[tuple[list[str],int]]:
+    def flow_decomapstion(self)->list[tuple[list[str],int]]:
         decomapstion=[]
         while(self.singal_source_shortest_path()):
             path=self.singal_source_shortest_path()
@@ -94,7 +94,7 @@ class Alogrithm:
 
         return decomapstion
 
-    def min_arrive_time(self,decompastion:list[tuple[list[str],int]])->tuple[list[list[str]],list[int],list[int]]:
+    def min_arrive_time(self,decompastion:list[tuple[list[str],int]])->list[tuple[list[str],int,int]]:
         nb_drones=self.network.nb_drones
         wieght=[]
         drones_path=[]
@@ -118,8 +118,10 @@ class Alogrithm:
                     cost=path_cost
             drones_path[j] += min(flows[j],nb_drones-assined)
             assined =assined+min(flows[j],nb_drones-assined)
-            
-
-        return (paths,flows,drones_path)
+        ret=[]
+        for i in range(len(paths)):
+            if drones_path[i] >0:
+                ret.append((paths[i],flows[i],drones_path[i]))
+        return ret
 
 

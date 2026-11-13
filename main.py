@@ -2,6 +2,7 @@ import sys
 from parse import Parse
 from models import Network
 from Algorithms import Alogrithm
+from simulation import Simulator
 
 
 def main() -> None:
@@ -27,11 +28,12 @@ def main() -> None:
             print(error)
         return
     algo=Alogrithm(parser.network)
-    decompostion=algo.max_netework_flow_decomapstion()
-    paths,flows,drones=algo.min_arrive_time(decompostion)
-    print(paths)
-    print(flows)
-    print(drones)
+    decompostion=algo.flow_decomapstion()
+    solution=algo.min_arrive_time(decompostion)
+    print(solution)
+    sim=Simulator(solution)
+    sim.simulation()
+
             
         
 
