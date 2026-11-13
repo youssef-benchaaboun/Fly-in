@@ -28,7 +28,7 @@ class Alogrithm:
             curent=self.zones[str(curent.parent)]
         return i
     
-    def constucte_min(self,hubs:list[Zone])->Zone:
+    def extract_min(self,hubs:list[Zone])->Zone:
         min_dist=min([zone.distance for zone in hubs])
         candidate=[zone for zone in hubs if zone.distance==min_dist]
         max_priority=max([self.priority_counter(zone) for zone in candidate])
@@ -43,24 +43,25 @@ class Alogrithm:
                 self.zones[ng].parent=curent
                 self.zones[ng].distance=self.zones[curent].distance +self.zones[ng].get_zone_wieght()
 
-    def singal_source_shortest_path(self)->list[str]:
-        self.network.intialize()
-        hubs=self.allowed_hubs()
-        while(hubs):
-            curent_procces=self.constucte_min(hubs)
-            self.relaxtion(curent_procces.name)
-            hubs.remove(curent_procces)
-
-        curent=self.network.end_hub
+    def construct_path(self)->list[str]:
         path=[]
+        curent=self.network.end_hub
         while(curent):
-            zone=self.zones[curent]
             path.append(curent)
-            curent=zone.parent
+            curent=self.network.zones[curent].parent
         path.reverse()
         if len(path)<=1:
             return []
         return path
+
+    def singal_source_shortest_path(self)->list[str]:
+        self.network.intialize()
+        hubs=self.allowed_hubs()
+        while(self.zones[self.network.end_hub] in hubs ):
+            curent_procces=self.extract_min(hubs)
+            self.relaxtion(curent_procces.name)
+            hubs.remove(curent_procces)
+        return self.construct_path()
 
     def get_path_wight(self,path:list[str])->int:
         wight=0
@@ -107,7 +108,6 @@ class Alogrithm:
             paths.append(path)
             flows.append(flow)
         assined=0
-        print(wieght)
         while(assined<nb_drones):
             cost=2*nb_drones + nb_drones -1
             j=0

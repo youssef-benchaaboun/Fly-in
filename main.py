@@ -30,7 +30,6 @@ def main() -> None:
     algo=Alogrithm(parser.network)
     decompostion=algo.flow_decomapstion()
     solution=algo.min_arrive_time(decompostion)
-    print(solution)
     sim=Simulator(solution)
     sim.simulation()
 
