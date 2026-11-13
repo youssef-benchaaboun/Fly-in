@@ -1,7 +1,7 @@
-nb_drones:1
+nb_drones:4
 start_hub:start 1 3 
 hub: pa1 4 2 [zone=normal]
-hub: pa2 24 2 [zone=priority]
+hub: pa2 24 2 [zone=priority color=Blue]
 hub: pa3 234 2 [zone=priority]
 hub: pb1 -4 2 [zone=priority]
 hub: pb2 -24 2 [zone=normal]

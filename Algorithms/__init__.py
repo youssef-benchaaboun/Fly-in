@@ -1,3 +1,5 @@
-from .path_finding import  Alogrithm
+"""Pathfinding package exports."""
+
+from .path_finding import Alogrithm
 
 __all__ = ["Alogrithm"]

@@ -1,7 +1,9 @@
+"""Command-line entry point for Fly-in."""
+
 import sys
-from parse import Parse
-from models import Network
+
 from Algorithms import Alogrithm
+from parse import Parse
 from simulation import Simulator
 
 
@@ -27,14 +29,11 @@ def main() -> None:
         for error in errors:
             print(error)
         return
-    algo=Alogrithm(parser.network)
-    decompostion=algo.flow_decomapstion()
-    solution=algo.min_arrive_time(decompostion)
-    sim=Simulator(solution)
+    algo = Alogrithm(parser.network)
+    decomposition = algo.flow_decomapstion()
+    solution = algo.min_arrive_time(decomposition)
+    sim = Simulator(solution, parser.network)
     sim.simulation()
-
-            
-        
 
 
 if __name__ == "__main__":

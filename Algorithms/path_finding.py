@@ -1,127 +1,172 @@
-from models import Network,Zone
+"""Path discovery and drone allocation for the Fly-in network."""
+
 import math
+
+from models import Network, Zone
+
+
+PathFlow = tuple[list[str], int]
+PathAssignment = tuple[list[str], int, int]
 
 
 class Alogrithm:
+    """Find usable paths and distribute drones between them.
 
-    def __init__(self,network:Network):
-        self.network=network
-        self.zones=self.network.zones
-        self.adjacencies=self.network.adjacencies
-        self.link_capacity=self.network.links_capacities
+    The class name is retained for compatibility with the original project.
+    """
 
-    def allowed_hubs(self)->list[Zone]:
-        hubs:list[Zone]=[]
-        for zone in self.zones.values():
-            if zone.zone_type =="blocked" or zone.get_zone_capacity() <=0:
-                continue
-            hubs.append(zone)
-        return hubs
-    
-    def priority_counter(self,curent:Zone)->int:
-        i=0
-        while(True):
-            if curent.zone_type=="priority":
-                i+=1
-            if curent.parent is None:
-                break
-            curent=self.zones[str(curent.parent)]
-        return i
-    
-    def extract_min(self,hubs:list[Zone])->Zone:
-        min_dist=min([zone.distance for zone in hubs])
-        candidate=[zone for zone in hubs if zone.distance==min_dist]
-        max_priority=max([self.priority_counter(zone) for zone in candidate])
-        best_candidate=[zone for zone in candidate if self.priority_counter(zone)==max_priority]
-        return best_candidate[0]
+    def __init__(self, network: Network) -> None:
+        """Store the network structures used by the algorithm."""
+        self.network = network
+        self.zones = network.zones
+        self.adjacencies = network.adjacencies
+        self.link_capacity = network.links_capacities
 
-    def relaxtion(self,curent:str)->None:
-        nieghbours=[ng for ng in self.adjacencies[curent] if self.zones[ng].zone_type!="blocked" and self.network.get_link_capacity(curent,ng)>0]
-        for ng in nieghbours:
-            condition=self.zones[ng].distance>self.zones[curent].distance +self.zones[ng].get_zone_wieght()
-            if condition:
-                self.zones[ng].parent=curent
-                self.zones[ng].distance=self.zones[curent].distance +self.zones[ng].get_zone_wieght()
+    def allowed_hubs(self) -> list[Zone]:
+        """Return zones which may still participate in a path."""
+        return [
+            zone
+            for zone in self.zones.values()
+            if zone.zone_type != "blocked" and zone.get_zone_capacity() > 0
+        ]
 
-    def construct_path(self)->list[str]:
-        path=[]
-        curent=self.network.end_hub
-        while(curent):
-            path.append(curent)
-            curent=self.network.zones[curent].parent
+    def priority_counter(self, current: Zone) -> int:
+        """Count priority zones between a zone and the path root."""
+        count = 0
+        while True:
+            if current.zone_type == "priority":
+                count += 1
+            if current.parent is None:
+                return count
+            current = self.zones[current.parent]
+
+    def extract_min(self, hubs: list[Zone]) -> Zone:
+        """Select the closest hub, preferring paths with priority zones."""
+        minimum_distance = min(zone.distance for zone in hubs)
+        candidates = [
+            zone for zone in hubs if zone.distance == minimum_distance
+        ]
+        return max(candidates, key=self.priority_counter)
+
+    def relaxtion(self, current: str) -> None:
+        """Relax all accessible outgoing links from one zone."""
+        neighbours = (
+            neighbour
+            for neighbour in self.adjacencies[current]
+            if self.zones[neighbour].zone_type != "blocked"
+            and self.network.get_link_capacity(current, neighbour) > 0
+        )
+        for neighbour in neighbours:
+            new_distance = (
+                self.zones[current].distance
+                + self.zones[neighbour].get_zone_wieght()
+            )
+            if self.zones[neighbour].distance > new_distance:
+                self.zones[neighbour].parent = current
+                self.zones[neighbour].distance = new_distance
+
+    def construct_path(self) -> list[str]:
+        """Build the current start-to-end path from parent pointers."""
+        path: list[str] = []
+        current = self.network.end_hub
+        while current is not None:
+            path.append(current)
+            current = self.zones[current].parent
         path.reverse()
-        if len(path)<=1:
-            return []
-        return path
+        return path if len(path) > 1 else []
 
-    def singal_source_shortest_path(self)->list[str]:
+    def singal_source_shortest_path(self) -> list[str]:
+        """Find one shortest available path through the residual network."""
         self.network.intialize()
-        hubs=self.allowed_hubs()
-        while(self.zones[self.network.end_hub] in hubs ):
-            curent_procces=self.extract_min(hubs)
-            self.relaxtion(curent_procces.name)
-            hubs.remove(curent_procces)
+        hubs = self.allowed_hubs()
+        end_hub = self.network.end_hub
+        if end_hub is None:
+            return []
+        while self.zones[end_hub] in hubs:
+            current = self.extract_min(hubs)
+            self.relaxtion(current.name)
+            hubs.remove(current)
         return self.construct_path()
 
-    def get_path_wight(self,path:list[str])->int:
-        wight=0
-        for zone in path[1:]:
-            wight += self.zones[zone].get_zone_wieght()
-        return wight
-    def get_path_flow(self,path:list[str])->int:
-        candadite=[]
-        for i in range(len(path)-1):
-            candadite.append(self.network.get_link_capacity(path[i],path[i+1]))
-            if path[i] in (self.network.start_hub,self.network.end_hub):
-                continue
-            candadite.append(self.zones[path[i]].get_zone_capacity())
-        if len(candadite) <=0:
-            return 0
-        return min(candadite)
+    def get_path_wight(self, path: list[str]) -> int:
+        """Return the movement cost of a path."""
+        return sum(self.zones[name].get_zone_wieght() for name in path[1:])
 
-    def update_path_flow(self,path:list[str])->None:
-        flow=self.get_path_flow(path=path)
-        for i in range(len(path)-1):
-            self.network.update_link_capacity(path[i],path[i+1],flow)
-            self.zones[path[i]].update_zone_capacity(amount=flow)
+    def get_path_flow(self, path: list[str]) -> int:
+        """Return the maximum residual flow supported by a path."""
+        candidates: list[int] = []
+        for index in range(len(path) - 1):
+            candidates.append(
+                self.network.get_link_capacity(path[index], path[index + 1])
+            )
+            if path[index] not in (
+                self.network.start_hub,
+                self.network.end_hub,
+            ):
+                candidates.append(self.zones[path[index]].get_zone_capacity())
+        return min(candidates) if candidates else 0
 
-    def flow_decomapstion(self)->list[tuple[list[str],int]]:
-        decomapstion=[]
-        while(self.singal_source_shortest_path()):
-            path=self.singal_source_shortest_path()
-            flow=self.get_path_flow(path)
-            decomapstion.append((path,flow))
-            self.update_path_flow(path=path)
+    def update_path_flow(self, path: list[str]) -> None:
+        """Remove a path's assigned flow from residual capacities."""
+        flow = self.get_path_flow(path)
+        for index in range(len(path) - 1):
+            self.network.update_link_capacity(
+                path[index], path[index + 1], flow
+            )
+            self.zones[path[index]].update_zone_capacity(amount=flow)
 
-        return decomapstion
+    def flow_decomapstion(self) -> list[PathFlow]:
+        """Decompose the residual network into usable paths and flows."""
+        decomposition: list[PathFlow] = []
+        while True:
+            path = self.singal_source_shortest_path()
+            if not path:
+                return decomposition
+            flow = self.get_path_flow(path)
+            decomposition.append((path, flow))
+            self.update_path_flow(path)
 
-    def min_arrive_time(self,decompastion:list[tuple[list[str],int]])->list[tuple[list[str],int,int]]:
-        nb_drones=self.network.nb_drones
-        wieght=[]
-        drones_path=[]
-        paths=[]
-        flows:list[int]=[]
-        for solution in decompastion:
-            path,flow=solution
-            wieght.append(self.get_path_wight(path))
-            drones_path.append(0)
-            paths.append(path)
-            flows.append(flow)
-        assined=0
-        while(assined<nb_drones):
-            cost=2*nb_drones + nb_drones -1
-            j=0
-            for i in range(len(paths)):
-                path_cost=math.ceil(drones_path[i]/flows[i])-1 + wieght[i]
-                if cost > path_cost:
-                    j=i
-                    cost=path_cost
-            drones_path[j] += min(flows[j],nb_drones-assined)
-            assined =assined+min(flows[j],nb_drones-assined)
-        ret=[]
-        for i in range(len(paths)):
-            if drones_path[i] >0:
-                ret.append((paths[i],flows[i],drones_path[i]))
-        return ret
+    @staticmethod
+    def _path_cost(assigned: int, flow: int, weight: int) -> int:
+        """Calculate the arrival cost of adding a batch to one path."""
+        return math.ceil(assigned / flow) - 1 + weight
 
+    def _best_path_index(
+        self,
+        assigned_per_path: list[int],
+        flows: list[int],
+        weights: list[int],
+    ) -> int:
+        """Return the path that preserves the original minimum-cost rule."""
+        return min(
+            range(len(flows)),
+            key=lambda index: self._path_cost(
+                assigned_per_path[index], flows[index], weights[index]
+            ),
+        )
 
+    def min_arrive_time(
+        self, decomposition: list[PathFlow]
+    ) -> list[PathAssignment]:
+        """Allocate all drones to paths without changing scheduling logic."""
+        paths = [path for path, _flow in decomposition]
+        flows = [flow for _path, flow in decomposition]
+        weights = [self.get_path_wight(path) for path in paths]
+        assigned_per_path = [0] * len(paths)
+
+        assigned = 0
+        while assigned < self.network.nb_drones and paths:
+            index = self._best_path_index(
+                assigned_per_path, flows, weights
+            )
+            amount = min(flows[index], self.network.nb_drones - assigned)
+            assigned_per_path[index] += amount
+            assigned += amount
+
+        return [
+            (path, flow, drone_count)
+            for path, flow, drone_count in zip(
+                paths, flows, assigned_per_path
+            )
+            if drone_count > 0
+        ]
