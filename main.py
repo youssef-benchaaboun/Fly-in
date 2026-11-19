@@ -29,12 +29,9 @@ def main() -> None:
         for error in errors:
             print(error)
         return
-    algo = Alogrithm(parser.network)
-    decomposition = algo.flow_decomapstion()
-    solution = algo.min_arrive_time(decomposition)
-    sim = Simulator(solution, parser.network)
-    sim.simulation()
-
+    risd=ResidualGraph(parser.network)
+    algo = Alogrithm(risd)
+    algo.max_flow()
 
 if __name__ == "__main__":
     main()

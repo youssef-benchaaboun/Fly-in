@@ -12,8 +12,6 @@ class Zone:
     color: str | None
     zone_type: str
     max_drones: int | None
-    parent: str | None = None
-    distance: int = 0
 
     def get_zone_capacity(self) -> int:
         """Return the zone's current residual capacity."""
@@ -21,10 +19,6 @@ class Zone:
             return 1
         return self.max_drones
 
-    def update_zone_capacity(self, amount: int) -> None:
-        """Consume residual capacity when assigning a path."""
-        if self.max_drones is not None:
-            self.max_drones -= amount
 
     def get_zone_wieght(self) -> int:
         """Return the turns needed to enter this zone."""
@@ -66,20 +60,3 @@ class Network:
         """Return a bidirectional link's residual capacity."""
         key = tuple(sorted([zone1, zone2]))
         return self.links_capacities[key]
-
-    def update_link_capacity(
-        self, zone1: str, zone2: str, amount: int
-    ) -> None:
-        """Consume residual link capacity."""
-        key = tuple(sorted([zone1, zone2]))
-        self.links_capacities[key] -= amount
-
-    def intialize(self) -> None:
-        """Reset shortest-path working values.
-
-        The original method name is retained for compatibility.
-        """
-        infinity = 2 * len(self.zones) + 1
-        for zone in self.zones.values():
-            zone.parent = None
-            zone.distance = 0 if zone.name == self.start_hub else infinity
