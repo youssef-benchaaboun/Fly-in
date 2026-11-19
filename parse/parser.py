@@ -8,11 +8,11 @@ class Parse:
     """Convert input lines into a validated :class:`Network`."""
 
     _ZONE_PATTERN = re.compile(
-        r"^(start_hub|end_hub|hub)\s*:\s*(\S+)\s+([+-]?\d+)\s*"
+        r"^\s*(start_hub|end_hub|hub)\s*:\s*(\S+)\s+([+-]?\d+)\s*"
         r"([+-]?\d+)(?:\s+(\[.*\]))?$"
     )
     _CONNECTION_PATTERN = re.compile(
-        r"^connection:\s*+([^\s-]+)-([^\s-]+)(?:\s+(\[.*\]))?$"
+        r"^\s*connection:\s*+([^\s-]+)-([^\s-]+)(?:\s+(\[.*\]))?$"
     )
     _DRONES_PATTERN = re.compile(r"^nb_drones\s*:\s*(\d+)\s*$")
     _ZONE_TYPES = {"normal", "blocked", "restricted", "priority"}

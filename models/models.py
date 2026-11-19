@@ -19,7 +19,6 @@ class Zone:
             return 1
         return self.max_drones
 
-
     def get_zone_wieght(self) -> int:
         """Return the turns needed to enter this zone."""
         return 2 if self.zone_type == "restricted" else 1

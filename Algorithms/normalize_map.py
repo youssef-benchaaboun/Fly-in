@@ -4,17 +4,21 @@
 from dataclasses import dataclass, field
 from models import Network
 
+
 @dataclass
 class ZoneInfo:
-    name:str
-    distance:float=float("inf")
-    parnet:str|None=None
+    name: str
+    zone_type: str = "normal"
+    distance: float = float("inf")
+    parent: str | None = None
+    potential: float = 0
+
 
 @dataclass
 class MapNormalized:
     network: Network
 
-    zones: dict[str,ZoneInfo] = field(default_factory=dict)
+    zones: dict[str, ZoneInfo] = field(default_factory=dict)
     adjacencies: dict[str, set[str]] = field(default_factory=dict)
 
     links_capacity: dict[tuple[str, str], int] = field(
@@ -36,12 +40,13 @@ class MapNormalized:
     def __post_init__(self) -> None:
         self.normalize()
 
-    def capacity_key(self, src: str, dst: str) -> tuple[str ,str]:
+    def capacity_key(self, src: str, dst: str) -> tuple[str, str]:
 
         if src.endswith("out") and dst.endswith("in"):
             zone1 = src[:-3]
             zone2 = dst[:-2]
-            return tuple(sorted((zone1, zone2)))
+            first, second = sorted((zone1, zone2))
+            return (first, second)
 
         return (src, dst)
 
@@ -59,7 +64,14 @@ class MapNormalized:
         remaining = self.links_capacity[key] - amount
         self.links_capacity[key] = remaining
 
-    def add_edge(self,src: str,dst: str,capacity: int,cost: int,link_type: str ) -> None:
+    def add_edge(
+        self,
+        src: str,
+        dst: str,
+        capacity: int,
+        cost: int,
+        link_type: str,
+    ) -> None:
         self.adjacencies[src].add(dst)
         key = (src, dst)
 
@@ -72,14 +84,14 @@ class MapNormalized:
     def normalize_zones(self) -> None:
 
         for zone in self.network.zones.values():
-            if zone.zone_type == "Blocked":
+            if zone.zone_type == "blocked":
                 continue
 
             zone_in = f"{zone.name}in"
             zone_out = f"{zone.name}out"
 
-            self.zones[zone_in]=ZoneInfo(zone_in)
-            self.zones[zone_out]=ZoneInfo(zone_out)
+            self.zones[zone_in] = ZoneInfo(zone_in, zone.zone_type)
+            self.zones[zone_out] = ZoneInfo(zone_out, zone.zone_type)
             self.adjacencies[zone_in] = set()
             self.adjacencies[zone_out] = set()
 
@@ -88,7 +100,7 @@ class MapNormalized:
 
             if zone.name == self.network.start_hub:
                 self.start_hub = zone_in
-                self.zones[self.start_hub].distance=0
+                self.zones[self.start_hub].distance = 0
                 capacity = self.network.nb_drones
                 cost = 0
 
@@ -97,27 +109,26 @@ class MapNormalized:
                 capacity = self.network.nb_drones
                 cost = 0
 
-            self.add_edge(zone_in,zone_out,capacity,cost,zone.zone_type)
+            self.add_edge(zone_in, zone_out, capacity, cost, zone.zone_type)
 
     def normalize_links(self) -> None:
-        for (zone1, zone2), capacity in (self.network.links_capacities.items()):
+        links = self.network.links_capacities.items()
+        for (zone1, zone2), capacity in links:
             if (
-                self.network.zones[zone1].zone_type == "Blocked"
-                or self.network.zones[zone2].zone_type == "Blocked"
+                self.network.zones[zone1].zone_type == "blocked"
+                or self.network.zones[zone2].zone_type == "blocked"
             ):
                 continue
-            self.add_edge(f"{zone1}out",f"{zone2}in",capacity,0,"link")
-            self.add_edge(f"{zone2}out",f"{zone1}in",capacity,0,"link")
+            self.add_edge(f"{zone1}out", f"{zone2}in", capacity, 0, "link")
+            self.add_edge(f"{zone2}out", f"{zone1}in", capacity, 0, "link")
 
     def normalize(self) -> None:
         self.normalize_zones()
         self.normalize_links()
-    def intialize(self)->None:
+
+    def intialize(self) -> None:
         for zone in self.zones:
-            self.zones[zone].distance=float("inf")
-            if zone==self.start_hub:
-                self.zones[zone].distance=0
-            self.zones[zone].parnet=None
-                
-
-
+            self.zones[zone].distance = float("inf")
+            if zone == self.start_hub:
+                self.zones[zone].distance = 0
+            self.zones[zone].parent = None

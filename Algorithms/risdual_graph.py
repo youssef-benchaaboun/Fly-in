@@ -2,7 +2,7 @@
 """Residual graph for Fly-in min-cost max-flow."""
 
 from dataclasses import dataclass, field
-from normalize_map import MapNormalized,ZoneInfo
+from .normalize_map import MapNormalized
 
 
 @dataclass
@@ -56,4 +56,3 @@ class ResidualGraph(MapNormalized):
         self.update_capacity(dst, src, -amount)
         self.links_flow[reverse] -= amount
         self.links_flow[key] += amount
-

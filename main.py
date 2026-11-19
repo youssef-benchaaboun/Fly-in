@@ -2,7 +2,7 @@
 
 import sys
 
-from Algorithms import Alogrithm
+from Algorithms import Alogrithm, ResidualGraph
 from parse import Parse
 from simulation import Simulator
 
@@ -29,9 +29,13 @@ def main() -> None:
         for error in errors:
             print(error)
         return
-    risd=ResidualGraph(parser.network)
+    risd = ResidualGraph(parser.network)
     algo = Alogrithm(risd)
     algo.max_flow()
+    decomposition = algo.flow_decomposition()
+    solution = algo.min_arrive_time(decomposition)
+    Simulator(solution, parser.network).simulation()
+
 
 if __name__ == "__main__":
     main()
