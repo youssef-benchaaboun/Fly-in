@@ -47,14 +47,15 @@ class ResidualGraph(MapNormalized):
                 -cost,
                 "residual",
             )
-    def get_flow(self,src: str, dst: str)->int:
+
+    def get_flow(self, src: str, dst: str) -> int:
         key = (src, dst)
         return self.links_flow[key]
-    
-    def update_flow(self,src: str, dst: str,amount:int)->None:
+
+    def update_flow(self, src: str, dst: str, amount: int) -> None:
         key = (src, dst)
-        self.links_flow[key]-=amount
-        
+        self.links_flow[key] -= amount
+
     def augment_edge(self, src: str, dst: str, amount: int) -> None:
         """Push flow or cancel existing flow."""
         key = (src, dst)
