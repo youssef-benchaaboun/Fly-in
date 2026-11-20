@@ -31,9 +31,7 @@ def main() -> None:
         return
     risd = ResidualGraph(parser.network)
     algo = Alogrithm(risd)
-    algo.max_flow()
-    decomposition = algo.flow_decomposition()
-    solution = algo.min_arrive_time(decomposition)
+    solution = algo.chose_solution()
     Simulator(solution, parser.network).simulation()
 
 

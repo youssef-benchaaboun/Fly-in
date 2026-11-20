@@ -1,7 +1,6 @@
 """Path discovery and drone allocation for the Fly-in network."""
 
 import math
-import sys
 from dataclasses import dataclass
 from .normalize_map import ZoneInfo
 from .risdual_graph import ResidualGraph
@@ -10,15 +9,10 @@ from .risdual_graph import ResidualGraph
 PathFlow = tuple[list[str], int]
 PathAssignment = tuple[list[str], int, int]
 
-sys.setrecursionlimit(100_000)
-
 
 @dataclass
 class Alogrithm:
     risdual_graph: ResidualGraph
-
-    def allowed_hubs(self) -> list[ZoneInfo]:
-        return list(self.risdual_graph.zones.values())
 
     def priority_counter(self, current: ZoneInfo) -> int:
         """Count priority zones between a zone and the path root."""
@@ -38,10 +32,12 @@ class Alogrithm:
         ]
         return max(candidates, key=self.priority_counter)
 
-    def relaxtion(self, current: str) -> None:
+    def relaxtion(self, current: str,capacity_used:bool) -> None:
         current_info = self.risdual_graph.zones[current]
         for neighbour in self.risdual_graph.adjacencies[current]:
-            if self.risdual_graph.get_capacity(current, neighbour) <= 0:
+            if capacity_used and self.risdual_graph.get_capacity(current, neighbour) <= 0:
+                continue
+            if not capacity_used and self.risdual_graph.get_flow(current, neighbour) <= 0:
                 continue
             neighbour_info = self.risdual_graph.zones[neighbour]
             cost = self.risdual_graph.links_cost[(current, neighbour)]
@@ -63,20 +59,18 @@ class Alogrithm:
         path.reverse()
         return path if len(path) > 1 else []
 
-    def singal_source_shortest_path(self) -> list[str]:
+    def shortest_path(self,capacity_used:bool) -> list[str]:
         """Find one shortest available path through the residual network."""
         self.risdual_graph.intialize()
-        hubs = self.allowed_hubs()
+        hubs = list(self.risdual_graph.zones.values())
         end_hub = self.risdual_graph.end_hub
-        if end_hub is None:
-            return []
         while hubs:
             current = self.extract_min(hubs)
             if current.distance == float("inf"):
                 return []
             if current.name == end_hub:
                 break
-            self.relaxtion(current.name)
+            self.relaxtion(current.name,capacity_used)
             hubs.remove(current)
         for zone in self.risdual_graph.zones.values():
             if zone.distance < float("inf"):
@@ -95,42 +89,53 @@ class Alogrithm:
             for index in range(len(path) - 1)
         )
 
-    def get_path_flow(self, path: list[str]) -> int:
+    def get_path_flow(self, path: list[str],capacity_used:bool) -> int:
         candidates: list[int] = []
         for index in range(len(path) - 1):
-            candidates.append(
-                self.risdual_graph.get_capacity(path[index], path[index + 1])
-            )
+            if capacity_used:
+                candidates.append(
+                    self.risdual_graph.get_capacity(path[index], path[index + 1])
+                )
+            else:
+                candidates.append(
+                    self.risdual_graph.get_flow(path[index], path[index + 1])
+                )        
         return min(candidates) if candidates else 0
 
-    def update_path(self, path: list[str], flow: int) -> None:
+    def update_path(self, path: list[str], flow: int,capacity_used:bool) -> None:
         for index in range(len(path) - 1):
-            self.risdual_graph.augment_edge(path[index], path[index + 1], flow)
+            if capacity_used:
+                self.risdual_graph.augment_edge(path[index], path[index + 1], flow)
+            else:
+                self.risdual_graph.update_flow(path[index], path[index + 1], flow)
 
-    def max_flow(self) -> None:
+    def risdual_link(self,path:list[str])->bool:
+        for curent , nt in path[:-1],path[1:]:
+            if self.risdual_graph.links_type[(curent,nt)]=="risdual":
+                return True
+        return False
+    def push_flow_back(self,path_decompastion:list[PathFlow])->None:
+        for path,flow in path_decompastion:
+            self.update_path(path,-flow,False)
+
+    def max_flow(self) -> list[list[PathFlow]]:
         total_flow = 0
+        snapsh_list:list[list[PathFlow]]=[[]]
         while total_flow < self.risdual_graph.network.nb_drones:
-            path = self.singal_source_shortest_path()
+            path = self.shortest_path(True)
             if not path:
-                return
-            flow = self.get_path_flow(path)
+                break
+            if self.risdual_link(path):
+                copy_curent=self.flow_decomposition()
+                self.push_flow_back(copy_curent)
+                snapsh_list[-1]=copy_curent
+                snapsh_list.append([])
+            flow = self.get_path_flow(path,True)
             total_flow += flow
-            self.update_path(path, flow)
-
-    def _flow_path(self, current: str, visited: set[str]) -> list[str]:
-        """Find an end-reaching path made only of positive-flow edges."""
-        if current == self.risdual_graph.end_hub:
-            return [current]
-        visited.add(current)
-        for neighbour in self.risdual_graph.adjacencies[current]:
-            if neighbour in visited:
-                continue
-            if self.risdual_graph.links_flow[(current, neighbour)] <= 0:
-                continue
-            suffix = self._flow_path(neighbour, visited)
-            if suffix:
-                return [current, *suffix]
-        return []
+            self.update_path(path, flow,True)
+        copy_curent=self.flow_decomposition()
+        snapsh_list[-1]=copy_curent
+        return snapsh_list
 
     @staticmethod
     def _denormalize_path(path: list[str]) -> list[str]:
@@ -140,20 +145,14 @@ class Alogrithm:
     def flow_decomposition(self) -> list[PathFlow]:
         """Extract start-to-end paths and their flow from the final flow."""
         decomposition: list[PathFlow] = []
-        if self.risdual_graph.start_hub is None:
-            return decomposition
-
         while True:
-            path = self._flow_path(self.risdual_graph.start_hub, set())
+            path = self.shortest_path(False)
             if not path:
                 return decomposition
-            flow = min(
-                self.risdual_graph.links_flow[(src, dst)]
-                for src, dst in zip(path, path[1:])
-            )
-            for src, dst in zip(path, path[1:]):
-                self.risdual_graph.links_flow[(src, dst)] -= flow
+            flow = self.get_path_flow(path,False)
+            self.update_path(path,flow,False)
             decomposition.append((self._denormalize_path(path), flow))
+
 
     @staticmethod
     def _path_cost(assigned: int, flow: int, weight: int) -> int:
@@ -200,3 +199,19 @@ class Alogrithm:
             )
             if drone_count > 0
         ]
+    def calclute_last_arrive(self,solution:list[PathAssignment])->int:
+        path,flow,nb=solution[0]
+        return self._path_cost(nb,flow,self.get_path_wight(path))
+
+    def chose_solution(self)->list[PathAssignment]:
+
+        result=[]
+        last_arrive=float("inf")
+        list_decompasion=self.max_flow()
+        for flow_decompsion in list_decompasion:
+            assning=self.min_arrive_time(flow_decompsion)
+            curent_arrive=self.calclute_last_arrive(assning)
+            if curent_arrive < last_arrive:
+                last_arrive=curent_arrive
+                result=assning
+        return result
