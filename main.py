@@ -31,7 +31,8 @@ def main() -> None:
         return
     risd = ResidualGraph(parser.network)
     algo = Alogrithm(risd)
-    solution = algo.chose_solution()
+    solution, turn = algo.optimal_solution()
+    print(f"total turn is: {turn}")
     Simulator(solution, parser.network).simulation()
 
 
