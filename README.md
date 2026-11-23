@@ -154,9 +154,4 @@ map:
 - [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code)
 - The Fly-in version 3.1 subject supplied with the project.
 
-AI was used to review the parser and routing implementation, refactor the
-minimum-arrival allocation and simulator into documented methods, implement
-restricted-zone and terminal-colour output, align selective snapshots and flow
-decomposition with the written proof, and validate the project with flake8,
-mypy, exhaustive allocation comparisons, and all supplied maps. The algorithm
-was reviewed against the proof and subject requirements before inclusion.
+AI was used to review the parser and routing implementation and document the wrok and the proof .
