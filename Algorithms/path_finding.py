@@ -32,18 +32,10 @@ class Alogrithm:
         ]
         return max(candidates, key=self.priority_counter)
 
-    def relaxtion(self, current: str, capacity_used: bool) -> None:
+    def relaxtion(self, current: str) -> None:
         current_info = self.risdual_graph.zones[current]
         for neighbour in self.risdual_graph.adjacencies[current]:
-            if (
-                capacity_used
-                and self.risdual_graph.get_capacity(current, neighbour) <= 0
-            ):
-                continue
-            if (
-                not capacity_used
-                and self.risdual_graph.get_flow(current, neighbour) <= 0
-            ):
+            if (self.risdual_graph.get_capacity(current, neighbour) <= 0):
                 continue
             neighbour_info = self.risdual_graph.zones[neighbour]
             cost = self.risdual_graph.links_cost[(current, neighbour)]
@@ -65,7 +57,7 @@ class Alogrithm:
         path.reverse()
         return path if len(path) > 1 else []
 
-    def shortest_path(self, capacity_used: bool) -> list[str]:
+    def shortest_path(self) -> list[str]:
         """Find one shortest available path through the residual network."""
         self.risdual_graph.intialize()
         hubs = list(self.risdual_graph.zones.values())
@@ -76,7 +68,7 @@ class Alogrithm:
                 return []
             if current.name == end_hub:
                 break
-            self.relaxtion(current.name, capacity_used)
+            self.relaxtion(current.name)
             hubs.remove(current)
         for zone in self.risdual_graph.zones.values():
             if zone.distance < float("inf"):
@@ -131,32 +123,26 @@ class Alogrithm:
             for current, next_hub in zip(path, path[1:])
         )
 
-    def push_flow_back(self, path_decompastion: list[PathFlow]) -> None:
-        for path, flow in path_decompastion:
-            normalized_path = [
-                hub
-                for name in path
-                for hub in (f"{name}in", f"{name}out")
-            ]
-            self.update_path(normalized_path, -flow, False)
+
 
     def max_flow(self) -> list[list[PathFlow]]:
+        #change name to max flow min cost
         total_flow = 0
         snapsh_list: list[list[PathFlow]] = [[]]
         while total_flow < self.risdual_graph.network.nb_drones:
-            path = self.shortest_path(True)
+            path = self.shortest_path()
             if not path:
                 break
-            if self.risdual_link(path):
-                copy_curent = self.flow_decomposition()
-                self.push_flow_back(copy_curent)
-                snapsh_list[-1] = copy_curent
-                snapsh_list.append([])
             flow = self.get_path_flow(path, True)
-            total_flow += flow
             self.update_path(path, flow, True)
-        copy_curent = self.flow_decomposition()
-        snapsh_list[-1] = copy_curent
+            total_flow += flow
+            if self.risdual_link(path):
+                curent_flow=self.risdual_graph.links_flow.copy()
+                new_snapsh=self.flow_decomposition()
+                snapsh_list.append(new_snapsh)
+                self.risdual_graph.links_flow=curent_flow
+            else:
+                snapsh_list[-1].append((path,flow))
         return snapsh_list
 
     @staticmethod
@@ -164,11 +150,12 @@ class Alogrithm:
         """Convert a normalized path to the zone names used by simulation."""
         return [name[:-2] for name in path if name.endswith("in")]
 
-    def flow_decomposition(self) -> list[PathFlow]:
+    def flow_decomposition(self,) -> list[PathFlow]:
         """Extract start-to-end paths and their flow from the final flow."""
         decomposition: list[PathFlow] = []
         while True:
-            path = self.shortest_path(False)
+            path = self.bfs_path()
+            #implement bfs to find a path with flow positive in all edges
             if not path:
                 return decomposition
             flow = self.get_path_flow(path, False)
@@ -178,7 +165,7 @@ class Alogrithm:
     @staticmethod
     def _path_cost(assigned: int, flow: int, weight: int) -> int:
         """Calculate the arrival cost of adding a batch to one path."""
-        return math.ceil(assigned / flow) - 1 + weight
+        return math.ceil(assigned / flow) + weight
 
     def _best_path_index(
         self,
@@ -187,6 +174,7 @@ class Alogrithm:
         weights: list[int],
     ) -> int:
         """Return the path that preserves the original minimum-cost rule."""
+        # dont use lambda just simple for ...
         return min(
             range(len(flows)),
             key=lambda index: self._path_cost(
@@ -197,14 +185,13 @@ class Alogrithm:
     def min_arrive_time(
         self, decomposition: list[PathFlow]
     ) -> list[PathAssignment]:
-        """Allocate drones and put the makespan-determining path first."""
+        """Allocate drones and distrubate them to get min last time arrive"""
         paths = [path for path, _flow in decomposition]
         flows = [flow for _path, flow in decomposition]
         weights = [self.get_path_wight(path) for path in paths]
         assigned_per_path = [0] * len(paths)
 
         assigned = 0
-        last_index: int | None = None
         drone_count = self.risdual_graph.network.nb_drones
         while assigned < drone_count and paths:
             index = self._best_path_index(
@@ -220,28 +207,19 @@ class Alogrithm:
             for index, (path, flow, drone_count) in enumerate(zip(
                 paths, flows, assigned_per_path
             ))
-            if drone_count > 0 and index != last_index
+            if drone_count > 0 
         ]
-        if last_index is not None:
-            assignments.insert(
-                0,
-                (
-                    paths[last_index],
-                    flows[last_index],
-                    assigned_per_path[last_index],
-                ),
-            )
         return assignments
 
     def calclute_last_arrive(self, solution: list[PathAssignment]) -> float:
-        if not solution:
-            return math.inf
+        # instead of assine first path ,flow value assine max of path cost loopin from 0 to len of solution
         path, flow, drone_count = solution[0]
         return self._path_cost(
             drone_count, flow, self.get_path_wight(path)
         )
 
     def chose_solution(self) -> list[PathAssignment]:
+        #change name to optimal solution
         result = []
         last_arrive = float("inf")
         list_decompasion = self.max_flow()
